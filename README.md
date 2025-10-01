@@ -1,15 +1,8 @@
 
-<h1 align="center">  Adaptive Interaction Network for Human Motion Prediction During Human-Robot Collaboration</h1>
+<h1 align="center">  </h1>
 
 
 
-This is the official implementation of the approach described in the paper of AINet :
-
-> **Adaptive Interaction Network for Human Motion Prediction During Human-Robot Collaboration**
-            
-> Mengyuan Liu<sup>1</sup>, Yangting Lin<sup>1</sup>, Qiongjie Cui<sup>2</sup>
-
-> <sup>1</sup>State Key Laboratory of General Artificial Intelligence, Peking University, Shenzhen Graduate School, <sup>2</sup>Singapore University of Technology and Design
 
 
 ## 💡 Environment
