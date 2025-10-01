@@ -5,7 +5,7 @@
 
 
 
-## 💡 Environment
+##  Environment
 The project is developed under the following environment:
 - Python 3.8
 - PyTorch 2.4
@@ -17,7 +17,7 @@ pip install -r requirements.txt
 ``` 
 
 
-## ✨ Training
+##  Training
 You can train the model as follows:
 ```
 CUDA_VISIBLE_DEVICES=0 CUBLAS_WORKSPACE_CONFIG=:4096:8 python train.py --seed 888 --exp-name HARPER_result.txt --layer-norm-axis spatial --with-normalization
