@@ -8,8 +8,8 @@
 ##  Environment
 The project is developed under the following environment:
 - Python 3.10
-- PyTorch 2.4
-- CUDA 12.4
+- PyTorch 2.1
+- CUDA 12.1
 
 For installation of the project dependencies, please run:
 ```
