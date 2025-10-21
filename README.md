@@ -7,7 +7,7 @@
 
 ##  Environment
 The project is developed under the following environment:
-- Python 3.8
+- Python 3.10
 - PyTorch 2.4
 - CUDA 12.4
 
