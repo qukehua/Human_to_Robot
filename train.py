@@ -5,7 +5,7 @@ import numpy as np
 import copy
 
 from config.harper_config import config as config
-from network.AINet import AINet as Model
+from network.model import AINet as Model
 
 from utils.logger import get_logger, print_and_log_info
 from utils.pyt_utils import link_file, ensure_dir
@@ -54,6 +54,9 @@ parser.add_argument('--spatial-fc', action='store_true', help='=use only spatial
 parser.add_argument('--num', type=int, default=24, help='=num of blocks')
 parser.add_argument('--weight', type=float, default=1., help='=loss weight')
 parser.add_argument('--work_dir', type=str, default=".", help='=work_dir')
+parser.add_argument('--stage', type=int, default=1, choices=[1, 2], help='training stage')
+parser.add_argument('--lambda-pre', type=float, default=1.0, help='prediction loss weight')
+parser.add_argument('--lambda-rec', type=float, default=0.5, help='reconstruction loss weight')
 
 args = parser.parse_args()
 
@@ -127,7 +130,7 @@ def train_step(harper_motion_input, harper_motion_target, model, optimizer, nb_i
     src2 = torch.matmul(dct_m[:, :, :config.motion.harper_input_length], src2.cuda())
 
 
-    motion_pred1, motion_pred2,alpha_s, alpha_t , beta_s, beta_t= model(src1.cuda(), src2.cuda(),
+    motion_pred1, alpha_s, alpha_t, beta_s, beta_t = model(src1, src2,
                                                            )
     reg_loss = torch.mean(torch.relu(-alpha_s) + torch.relu(alpha_s - 1) +
                           torch.relu(-alpha_t) + torch.relu(alpha_t - 1) +
@@ -135,28 +138,20 @@ def train_step(harper_motion_input, harper_motion_target, model, optimizer, nb_i
                           torch.relu(-beta_t) + torch.relu(beta_t - 1))
 
     motion_pred1 = torch.matmul(idct_m[:, :config.motion.harper_input_length, :], motion_pred1)
-    motion_pred2 = torch.matmul(idct_m[:, :config.motion.harper_input_length, :], motion_pred2)
 
     if config.deriv_output:
         offset1 = harper_motion_input[:, -1:, :in_features].cuda()
-        offset2 = harper_motion_input[:, -1:, in_features:].cuda()
-
         motion_pred1 = motion_pred1[:, :config.motion.harper_target_length] + offset1
-        motion_pred2 = motion_pred2[:, :config.motion.harper_target_length] + offset2
     else:
         motion_pred1 = motion_pred1[:, :config.motion.harper_target_length]
-        motion_pred2 = motion_pred2[:, :config.motion.harper_target_length]
 
     b, n, c = harper_motion_target.shape
     motion_pred1 = motion_pred1.reshape(b, n, human_joint, 3).reshape(-1, 3)
-    motion_pred2 = motion_pred2.reshape(b, n, robot_joint, 3).reshape(-1, 3)
 
     harper_motion_target = harper_motion_target.cuda().reshape(b, n, n_joint, 3)  # .reshape(-1, 3)
     h_gt = harper_motion_target[:, :, :human_joint].reshape(-1, 3)
-    r_gt = harper_motion_target[:, :, human_joint:].reshape(-1, 3)
 
     loss_h = torch.mean(torch.norm(motion_pred1 - h_gt, 2, 1))
-    loss_r = torch.mean(torch.norm(motion_pred2 - r_gt, 2, 1))
 
 
     if config.use_relative_loss:
@@ -167,21 +162,23 @@ def train_step(harper_motion_input, harper_motion_target, model, optimizer, nb_i
         dlossh = torch.mean(torch.norm((dmotion_pred - dmotion_hgt).reshape(-1, 3), 2, 1))
         loss_h += dlossh
 
-        motion_r_gt = r_gt.reshape(b, n, robot_joint, 3)
-        motion_pred2 = motion_pred2.reshape(b, n, robot_joint, 3)
-        dmotion_pred = gen_velocity(motion_pred2)
-        dmotion_rgt = gen_velocity(motion_r_gt)
-        dlossr = torch.mean(torch.norm((dmotion_pred - dmotion_rgt).reshape(-1, 3), 2, 1))
-        loss_r += dlossr
     else:
-        loss_r = loss_r.mean()
         loss_h = loss_h.mean()
+    rec_h = model.last_recon_h.reshape(-1, 3)
+    rec_r = model.last_recon_r.reshape(-1, 3)
+    inp_h = src1.reshape(b, seqlen, human_joint, 3).reshape(-1, 3)
+    inp_r = src2.reshape(b, seqlen, robot_joint, 3).reshape(-1, 3)
+    rec_loss_h = torch.mean(torch.norm(rec_h - inp_h, 2, 1))
+    rec_loss_r = torch.mean(torch.norm(rec_r - inp_r, 2, 1))
+    rec_loss = rec_loss_h + rec_loss_r
+
     reg_loss = reg_loss * d
-    loss = loss_r + loss_h + reg_loss
+    pred_loss = loss_h
+    loss = args.lambda_pre * pred_loss + args.lambda_rec * rec_loss + reg_loss
 
     writer.add_scalar('Loss/loss_all', loss.detach().cpu().numpy(), nb_iter)
-    writer.add_scalar('Loss/loss_r', loss_r.detach().cpu().numpy(), nb_iter)
     writer.add_scalar('Loss/loss_h', loss_h.detach().cpu().numpy(), nb_iter)
+    writer.add_scalar('Loss/loss_rec', rec_loss.detach().cpu().numpy(), nb_iter)
     writer.add_scalar('Loss/reg_loss', reg_loss.detach().cpu().numpy(), nb_iter)
     optimizer.zero_grad()
     loss.backward()
@@ -190,10 +187,11 @@ def train_step(harper_motion_input, harper_motion_target, model, optimizer, nb_i
     optimizer, current_lr = update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer)
     writer.add_scalar('LR/train', current_lr, nb_iter)
 
-    return loss.item(), optimizer, current_lr, loss_r, loss_h
+    return loss.item(), optimizer, current_lr, loss_h
 
 if __name__=="__main__":
     model = Model(config)
+    model.set_stage(args.stage)
     model.train()
     model.cuda()
 
@@ -222,7 +220,7 @@ if __name__=="__main__":
 
         for (harper_motion_input, harper_motion_target) in tqdm(dataloader):
             # B, N, 66   B,T,66
-            loss, optimizer, current_lr, loss_h, loss_r = train_step(harper_motion_input, harper_motion_target,
+            loss, optimizer, current_lr, loss_h = train_step(harper_motion_input, harper_motion_target,
                                                                                 model, optimizer,
                                                                                   nb_iter,
                                                                                   config.cos_lr_total_iters,
@@ -241,7 +239,7 @@ if __name__=="__main__":
 
             if (nb_iter + 1) % config.print_loss == 0:
                 print(nb_iter + 1)
-                print(f"loss {loss}, loss_r {loss_r}, loss_h {loss_h}  regloss {loss-loss_h-loss_r}")
+                print(f"loss {loss}, loss_h {loss_h}  regloss {loss-loss_h}")
             if (nb_iter + 1) % config.save_every == 0:
                 print(nb_iter + 1)
                 torch.save(model.state_dict(), config.snapshot_dir + "/model" + '/model-iter-' + str(nb_iter + 1) + '.pth')

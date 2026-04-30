@@ -1,0 +1,67 @@
+stage: 1
+name: human_to_human_pretrain
+seed: 42
+
+model:
+  file: network/model.py
+  class_name: AINet
+  freeze_cross_attn: false
+  use_ifb: false
+
+train:
+  epochs: 100
+  batch_size: 256
+  num_workers: 4
+  lr: 3.0e-4
+  weight_decay: 1.0e-4
+  lambda_pre: 1.0
+  lambda_rec: 0.5
+  save_every: 20
+
+sequence:
+  obs_len: 60
+  pred_len: 10
+  coord_dim: 3
+  input_domain: dct
+
+datasets:
+  root: /data/user/qkh/datasets
+  sources:
+    - name: 3DPW
+      path: /data/user/qkh/datasets/3DPW/data_aug
+      split: train
+      is_multi_person: true
+      format: npz
+      keys: [person_a, person_b]
+
+    - name: amass
+      path: /data/user/qkh/datasets/amass/data_aug
+      split: train
+      is_multi_person: false
+      converted_to_multi_person: true
+      format: npz
+      keys: [person_a, person_b]
+
+    - name: h3.6m
+      path: /data/user/qkh/datasets/h3.6m/data_aug
+      split: train
+      is_multi_person: false
+      converted_to_multi_person: true
+      format: npz
+      keys: [person_a, person_b]
+
+    - name: MuPots-3d
+      path: /data/user/qkh/datasets/MuPots-3d/data_aug
+      split: train
+      is_multi_person: true
+      format: npz
+
+preprocess:
+  script: /data/user/qkh/human_to_robot/dataset/data_prepocess.py
+  out_folder_name: data_aug
+  max_files_per_dataset: 200
+  augment_single_person:
+    enable: true
+    methods: [copy, rotate_z, mirror_x]
+    rotate_deg: [25, 40]
+    x_offset: 0.6

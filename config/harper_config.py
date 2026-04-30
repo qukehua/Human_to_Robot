@@ -21,8 +21,12 @@ C.print_loss = 400
 """please config ROOT_dir and user when u first using"""
 C.abs_dir = osp.dirname(osp.realpath(__file__))
 C.this_dir = C.abs_dir.split(osp.sep)[-1]
-C.repo_name = 'AINet'
-C.root_dir = C.abs_dir[:C.abs_dir.index(C.repo_name) + len(C.repo_name)]
+C.repo_name = 'human_to_robot'
+if C.repo_name in C.abs_dir:
+    C.root_dir = C.abs_dir[: C.abs_dir.index(C.repo_name) + len(C.repo_name)]
+else:
+    # Fallback: config/ is directly under project root.
+    C.root_dir = osp.abspath(osp.join(C.abs_dir, ".."))
 
 C.log_dir = osp.abspath(osp.join(C.abs_dir, 'log2'))
 

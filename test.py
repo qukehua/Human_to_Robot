@@ -1,7 +1,7 @@
 import argparse
 import numpy as np
 from config.harper_config import config as config
-from network.AINet import AINet
+from network.model import AINet
 from dataset.harper_3d_2 import Harper3D
 import copy
 import torch
@@ -31,7 +31,7 @@ in_features = human_joint * 3
 
 def regress_pred(model, pbar, num_samples, action='all'):
     out_n = config.motion.harper_target_length_eval
-    mpjpe_all, mpjpe_human, mpjpe_robot = np.zeros([out_n]), np.zeros([out_n]), np.zeros([out_n])
+    mpjpe_human = np.zeros([out_n])
 
     for (motion_input, motion_target) in pbar:
         motion_input = motion_input.cuda()
@@ -50,11 +50,12 @@ def regress_pred(model, pbar, num_samples, action='all'):
                 src1 = torch.matmul(dct_m[:, :, :config.motion.harper_input_length], src1.cuda())
                 src2 = torch.matmul(dct_m[:, :, :config.motion.harper_input_length], src2.cuda())
 
-                motion_pred1, motion_pred2, _, _, _, _ = model(src1, src2)
+                motion_pred1, _, _, _, _ = model(src1, src2)
                 motion_pred1 = torch.matmul(idct_m[:, :config.motion.harper_input_length, :], motion_pred1)[:, :step, :]
-                motion_pred2 = torch.matmul(idct_m[:, :config.motion.harper_input_length, :], motion_pred2)[:, :step, :]
 
-                output = torch.cat([motion_pred1, motion_pred2], dim=-1)
+                # Keep robot stream as context-only by repeating latest observed robot pose.
+                robot_context = motion_input[:, -1:, in_features:].repeat(1, step, 1)
+                output = torch.cat([motion_pred1, robot_context], dim=-1)
                 if config.deriv_output:
                     output = output + motion_input[:, -1:, :].repeat(1, step, 1)
 
@@ -69,21 +70,12 @@ def regress_pred(model, pbar, num_samples, action='all'):
         motion_pred = motion_pred.reshape(b, nt, n_joint, 3).cpu()
         motion_target = motion_target.reshape(b, nt, n_joint, 3)
 
-        tmp_joi = torch.sum(torch.mean(torch.norm(motion_target - motion_pred, dim=3), dim=2), dim=0)
-        mpjpe_all += tmp_joi.cpu().data.numpy()
-
         tmp_joi = torch.sum(torch.mean(torch.norm(motion_target[:, :, :human_joint] - motion_pred[:, :, :human_joint], dim=3), dim=2), dim=0)
         mpjpe_human += tmp_joi.cpu().data.numpy()
-
-        tmp_joi = torch.sum(torch.mean(torch.norm(motion_target[:, :, human_joint:] - motion_pred[:, :, human_joint:], dim=3), dim=2), dim=0)
-        mpjpe_robot += tmp_joi.cpu().data.numpy()
-
-    mpjpe_all, mpjpe_human, mpjpe_robot = mpjpe_all / num_samples, mpjpe_human / num_samples, mpjpe_robot / num_samples
+    mpjpe_human = mpjpe_human / num_samples
 
     out_print_frame = get_out_print_frame(out_n)
-    res_dic = {"mpjpe_all": mpjpe_all[out_print_frame]*1000,
-               "mpjpe_human": mpjpe_human[out_print_frame]*1000,
-               "mpjpe_robot": mpjpe_robot[out_print_frame]*1000}
+    res_dic = {"mpjpe_human": mpjpe_human[out_print_frame] * 1000}
 
     print(f'Error at each output frame:\n Frame number:{out_print_frame}\n {action} Error:{res_dic}')
 

@@ -54,9 +54,9 @@ sympy==1.13.1
 tensorboard==2.18.0
 tensorboard-data-server==0.7.2
 threadpoolctl==3.6.0
-torch==2.1.0+cu121
-torchaudio==2.1.0+cu121
-torchvision==0.16.0+cu121
+torch==2.1.0
+torchaudio==2.1.0
+torchvision==0.16.0
 tqdm==4.67.0
 triton==2.1.0
 typing_extensions==4.12.2
