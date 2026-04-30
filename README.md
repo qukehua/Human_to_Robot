@@ -7,12 +7,17 @@
 
 ##  Environment
 The project is developed under the following environment:
-- Python 3.10
+- Python 3.10 
 - PyTorch 2.1
 - CUDA 12.1
 
+
+
+
 For installation of the project dependencies, please run:
 ```
+conda create -n human_to_robot python=3.10
+
 pip install -r requirements.txt
 ``` 
 
