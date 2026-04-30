@@ -17,7 +17,7 @@ The project is developed under the following environment:
 For installation of the project dependencies, please run:
 ```
 conda create -n human_to_robot python=3.10
-conda install pytorch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 pytorch-cuda=12.1 -c pytorch -c nvidia
+conda install -y pytorch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 pytorch-cuda=12.1 -c pytorch -c nvidia
 pip install -r requirements.txt
 ``` 
 
