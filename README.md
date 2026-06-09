@@ -27,4 +27,4 @@ You can train the model as follows:
 ```
 CUDA_VISIBLE_DEVICES=0 CUBLAS_WORKSPACE_CONFIG=:4096:8 python train.py --seed 888 --exp-name HARPER_result.txt --layer-norm-axis spatial --with-normalization
 ```
-where config files are located at `configs/harper_config.py`.
+where config files are located at `config/harper_config.yml`.

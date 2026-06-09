@@ -7,6 +7,12 @@ model:
   class_name: AINet
   freeze_cross_attn: false
   use_ifb: false
+  motion_mlp:
+    embed_dim: 64
+    dropout: 0.1
+    intra_layers: 12
+    inter_layers: 9
+    attn_heads: 8
 
 train:
   epochs: 100
@@ -22,6 +28,7 @@ sequence:
   obs_len: 60
   pred_len: 10
   coord_dim: 3
+  target_joints: 21
   input_domain: dct
 
 datasets:

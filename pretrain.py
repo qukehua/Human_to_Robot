@@ -1,14 +1,12 @@
 import argparse
-import copy
 from pathlib import Path
 
 import numpy as np
 import torch
-import yaml
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from config.harper_config import config as base_config
+from config.config_utils import build_h2h_model_config, load_yaml
 from network.model import AINet
 
 
@@ -99,22 +97,24 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--cfg", type=str, default="config/h2h_pretrain_cfg.yml")
     parser.add_argument("--work-dir", type=str, default="./ckpt_h2h_pretrain")
-    parser.add_argument("--seed", type=int, default=888)
+    parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--max-steps", type=int, default=0, help="0 means full training by epochs")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    with open(args.cfg, "r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
+    cfg = load_yaml(args.cfg)
 
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
+    seed = int(args.seed if args.seed is not None else cfg.get("seed", 888))
+    torch.manual_seed(seed)
+    np.random.seed(seed)
     Path(args.work_dir).mkdir(parents=True, exist_ok=True)
 
     obs_len = int(cfg["sequence"]["obs_len"])
     pred_len = int(cfg["sequence"]["pred_len"])
+    coord_dim = int(cfg["sequence"].get("coord_dim", 3))
+    target_joints = int(cfg["sequence"].get("target_joints", 21))
     batch_size = int(cfg["train"]["batch_size"])
     epochs = int(cfg["train"]["epochs"])
     num_workers = int(cfg["train"]["num_workers"])
@@ -123,21 +123,15 @@ def main():
     lambda_pre = float(cfg["train"]["lambda_pre"])
     lambda_rec = float(cfg["train"]["lambda_rec"])
 
-    dataset = H2HPretrainDataset(cfg, obs_len=obs_len, pred_len=pred_len, target_joints=21)
+    dataset = H2HPretrainDataset(cfg, obs_len=obs_len, pred_len=pred_len, target_joints=target_joints)
     if len(dataset) == 0:
         raise RuntimeError("No valid training windows found. Check data_aug files and cfg paths.")
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, drop_last=True)
 
-    config = copy.deepcopy(base_config)
-    config.motion.harper_input_length = obs_len
-    config.motion.harper_input_length_dct = obs_len
-    config.motion.harper_target_length_train = pred_len
-    config.motion.harper_target_length = pred_len
-    config.motion.dim1 = 63
-    config.motion.dim2 = 63  # human-human pretrain uses symmetric branches
+    config = build_h2h_model_config(cfg)
 
     model = AINet(config).cuda()
-    model.set_stage(1)
+    model.set_stage(int(cfg.get("stage", 1)))
     model.train()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -153,7 +147,7 @@ def main():
             motion_input = motion_input.cuda()  # [B,T,126]
             motion_target = motion_target.cuda()  # [B,P,126]
             b, t, _ = motion_input.shape
-            in_features = 63
+            in_features = target_joints * coord_dim
 
             src1 = motion_input[:, :, :in_features]
             src2 = motion_input[:, :, in_features:]
@@ -168,8 +162,8 @@ def main():
 
             rec1 = model.last_recon_h
             rec2 = model.last_recon_r
-            src1_xyz = src1.reshape(b, t, 21, 3).reshape(-1, 3)
-            src2_xyz = src2.reshape(b, t, 21, 3).reshape(-1, 3)
+            src1_xyz = src1.reshape(b, t, target_joints, coord_dim).reshape(-1, coord_dim)
+            src2_xyz = src2.reshape(b, t, target_joints, coord_dim).reshape(-1, coord_dim)
             rec1_xyz = rec1.reshape(-1, 3)
             rec2_xyz = rec2.reshape(-1, 3)
             loss_rec = torch.mean(torch.norm(rec1_xyz - src1_xyz, dim=-1)) + torch.mean(

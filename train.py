@@ -4,7 +4,7 @@ import json
 import numpy as np
 import copy
 
-from config.harper_config import config as config
+from config.config_utils import load_harper_config
 from network.model import AINet as Model
 
 from utils.logger import get_logger, print_and_log_info
@@ -19,6 +19,7 @@ from tqdm import tqdm
 import shutil
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
 
+config = load_harper_config()
 n_joint = 21 + 23
 human_joint = 21
 robot_joint = 23
@@ -47,7 +48,6 @@ eval_dataloader = DataLoader(eval_dataset, batch_size=128,
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--exp-name', type=str, default=None, help='=exp name')
 parser.add_argument('--seed', type=int, default=888, help='=seed')
-parser.add_argument('--temporal-only', action='store_true', help='=temporal only')
 parser.add_argument('--layer-norm-axis', type=str, default='spatial', help='=layernorm axis')
 parser.add_argument('--with-normalization', action='store_true', help='=use layernorm')
 parser.add_argument('--spatial-fc', action='store_true', help='=use only spatial fc')
@@ -71,8 +71,6 @@ config.motion.harper_target_length = config.motion.harper_target_length_train
 eval_config = copy.deepcopy(config)
 eval_config.motion.harper_target_length = eval_config.motion.harper_target_length_eval
 
-config.motion_fc_in.temporal_fc = args.temporal_only
-config.motion_fc_out.temporal_fc = args.temporal_only
 config.motion_mlp.norm_axis = args.layer_norm_axis
 config.motion_mlp.spatial_fc_only = args.spatial_fc
 config.motion_mlp.with_normalization = args.with_normalization

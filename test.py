@@ -1,6 +1,6 @@
 import argparse
 import numpy as np
-from config.harper_config import config as config
+from config.config_utils import load_harper_config
 from network.model import AINet
 from dataset.harper_3d_2 import Harper3D
 import copy
@@ -24,12 +24,12 @@ def get_dct_matrix(N):
     return dct_m, idct_m
 
 
-dct_m, idct_m = get_dct_matrix(config.motion.harper_input_length_dct)
-dct_m = torch.tensor(dct_m).float().cuda().unsqueeze(0)
-idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
 in_features = human_joint * 3
 
-def regress_pred(model, pbar, num_samples, action='all'):
+def regress_pred(config, model, pbar, num_samples, action='all'):
+    dct_m, idct_m = get_dct_matrix(config.motion.harper_input_length_dct)
+    dct_m = torch.tensor(dct_m).float().cuda().unsqueeze(0)
+    idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
     out_n = config.motion.harper_target_length_eval
     mpjpe_human = np.zeros([out_n])
 
@@ -88,7 +88,7 @@ def test(config, model, dataloader):
     num_samples = 0
 
     pbar = dataloader
-    res_dict = regress_pred(model, pbar, num_samples)
+    res_dict = regress_pred(config, model, pbar, num_samples)
     return res_dict
 
 
@@ -112,6 +112,7 @@ if __name__ == "__main__":
     parser.add_argument('--model-pth', type=str, default=None, help='=encoder path')
     args = parser.parse_args()
 
+    config = load_harper_config()
 
     model = AINet(config)
     args.model_pth = r''

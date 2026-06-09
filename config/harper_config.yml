@@ -1,0 +1,49 @@
+print_coe: false
+save_pred_gt: false
+save_mpjpe: false
+seed: 42
+n_joint: 44
+print_loss: 400
+
+paths:
+  log_dir: log2
+
+motion:
+  harper_input_length: 60
+  harper_input_length_dct: 60
+  harper_target_length_train: 10
+  harper_target_length_eval: 30
+  dim1: 63
+  dim2: 69
+
+data_aug: true
+deriv_input: true
+deriv_output: true
+use_relative_loss: true
+
+pre_dct: false
+post_dct: false
+
+motion_mlp:
+  hidden_dim: 63
+  seq_len: 60
+  intra_layers: 12
+  inter_layers: 9
+  attn_heads: 8
+  with_normalization: true
+  spatial_fc_only: false
+  norm_axis: spatial
+
+batch_size: 256
+num_workers: 2
+
+cos_lr_max: 1.0e-5
+cos_lr_min: 5.0e-8
+cos_lr_total_iters: 40000
+
+weight_decay: 1.0e-4
+model_pth:
+
+shift_step: 1
+print_every: 1000
+save_every: 1000

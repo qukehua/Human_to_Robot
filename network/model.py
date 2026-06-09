@@ -134,9 +134,11 @@ class AINet(nn.Module):
         self.pred_len = getattr(self.config.motion, "harper_target_length_train", 10)
         self.embed_dim = getattr(self.config.motion_mlp, "embed_dim", 64)
         self.dropout = getattr(self.config.motion_mlp, "dropout", 0.1)
-        self.intra_layers = getattr(self.config.motion_mlp, "intra_layers", 2)
-        self.inter_layers = getattr(self.config.motion_mlp, "inter_layers", 2)
-        self.heads = getattr(self.config.motion_mlp, "attn_heads", 4)
+        self.intra_layers = getattr(self.config.motion_mlp, "intra_layers", 12)
+        self.inter_layers = getattr(self.config.motion_mlp, "inter_layers", 9)
+        self.heads = getattr(self.config.motion_mlp, "attn_heads", 8)
+        if self.embed_dim % self.heads != 0:
+            raise ValueError(f"embed_dim ({self.embed_dim}) must be divisible by attn_heads ({self.heads})")
 
         self.encoder_h = MotionEncoder(self.embed_dim, self.dropout)
         self.encoder_r = MotionEncoder(self.embed_dim, self.dropout)
@@ -163,12 +165,17 @@ class AINet(nn.Module):
         self.stage = 1
         self.set_stage(1)
 
+    @staticmethod
+    def _set_trainable(module: nn.Module, trainable: bool) -> None:
+        for p in module.parameters():
+            p.requires_grad = trainable
+
     def set_stage(self, stage: int) -> None:
         self.stage = stage
-        freeze_cross = stage == 2
-        for m in self.cross_blocks:
-            for p in m.parameters():
-                p.requires_grad = not freeze_cross
+        freeze_backbone = stage == 2
+        self._set_trainable(self.intra_h, not freeze_backbone)
+        self._set_trainable(self.intra_r, not freeze_backbone)
+        self._set_trainable(self.cross_blocks, not freeze_backbone)
 
     def _run_intra(self, feat: torch.Tensor, blocks: nn.ModuleList) -> torch.Tensor:
         # feat: B,J,T,D -> B,D,J,T
