@@ -71,14 +71,22 @@ class STCrossAttention(nn.Module):
     def forward(self, q: torch.Tensor, kv: torch.Tensor) -> torch.Tensor:
         # q,kv: B,J,T,D
         b, j, t, d = q.shape
+        b_kv, j_kv, t_kv, d_kv = kv.shape
+        if b_kv != b or t_kv != t or d_kv != d:
+            raise ValueError(
+                f"q and kv must share batch/time/channel dims, got q={tuple(q.shape)}, kv={tuple(kv.shape)}"
+            )
 
         qs = q.permute(0, 2, 1, 3).reshape(b * t, j, d)
-        ks = kv.permute(0, 2, 1, 3).reshape(b * t, j, d)
+        ks = kv.permute(0, 2, 1, 3).reshape(b * t, j_kv, d)
         spatial, _ = self.spatial(qs, ks, ks)
         spatial = self.norm_s(spatial + qs).reshape(b, t, j, d).permute(0, 2, 1, 3)
 
         qt = spatial.reshape(b * j, t, d)
-        kt = kv.reshape(b * j, t, d)
+        if j_kv == j:
+            kt = kv.reshape(b * j, t, d)
+        else:
+            kt = kv.mean(dim=1, keepdim=True).expand(-1, j, -1, -1).reshape(b * j, t, d)
         temporal, _ = self.temporal(qt, kt, kt)
         temporal = self.norm_t(temporal + qt).reshape(b, j, t, d)
         return temporal
