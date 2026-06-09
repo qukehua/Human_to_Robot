@@ -1,0 +1,32 @@
+# Model checkpoints / weights
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.onnx
+
+# Training outputs
+ckpt_*/
+result/
+config/log2/
+checkpoints/
+
+# TensorBoard
+events.out.tfevents.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
