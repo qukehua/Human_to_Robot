@@ -130,10 +130,13 @@ def train_step(harper_motion_input, harper_motion_target, model, optimizer, nb_i
 
     motion_pred1, alpha_s, alpha_t, beta_s, beta_t = model(src1, src2,
                                                            )
-    reg_loss = torch.mean(torch.relu(-alpha_s) + torch.relu(alpha_s - 1) +
-                          torch.relu(-alpha_t) + torch.relu(alpha_t - 1) +
-                          torch.relu(-beta_s) + torch.relu(beta_s - 1) +
-                          torch.relu(-beta_t) + torch.relu(beta_t - 1))
+    reg_terms = [
+        torch.relu(-alpha_s) + torch.relu(alpha_s - 1),
+        torch.relu(-alpha_t) + torch.relu(alpha_t - 1),
+        torch.relu(-beta_s) + torch.relu(beta_s - 1),
+        torch.relu(-beta_t) + torch.relu(beta_t - 1),
+    ]
+    reg_loss = sum(term.mean() for term in reg_terms)
 
     motion_pred1 = torch.matmul(idct_m[:, :config.motion.harper_input_length, :], motion_pred1)
 
