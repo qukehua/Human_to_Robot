@@ -120,7 +120,7 @@ if __name__ == "__main__":
     model.load_state_dict(state_dict, strict=True)
     model.eval()
     model.cuda()
-    data_root = r'E:\Data\30hz'
+    data_root = r'/data/user/qkh/datasets/HARPER/HARPER _3D panoptic/30hz'
 
 
     eval_config = copy.deepcopy(config)

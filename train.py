@@ -23,7 +23,7 @@ config = load_harper_config()
 n_joint = 21 + 23
 human_joint = 21
 robot_joint = 23
-data_root = r'/data3/0lyt/data/30hz'
+data_root = r'/data/user/qkh/datasets/HARPER/HARPER _3D panoptic/30hz'
 
 config.motion.harper_target_length = config.motion.harper_target_length_train
 dataset = Harper3D(data_path=data_root, split="train", n_input=config.motion.harper_input_length,
@@ -46,7 +46,7 @@ eval_dataloader = DataLoader(eval_dataset, batch_size=128,
                              num_workers=1, drop_last=False,
                              sampler=sampler, shuffle=shuffle, pin_memory=True)
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--exp-name', type=str, default=None, help='=exp name')
+parser.add_argument('--exp-name', type=str, default='train', help='=exp name')
 parser.add_argument('--seed', type=int, default=888, help='=seed')
 parser.add_argument('--layer-norm-axis', type=str, default='spatial', help='=layernorm axis')
 parser.add_argument('--with-normalization', action='store_true', help='=use layernorm')
