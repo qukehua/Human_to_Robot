@@ -199,10 +199,10 @@ class AINet(nn.Module):
         return x
 
     def _decode_future(self, fused: torch.Tensor, head: nn.Linear, joints: int) -> torch.Tensor:
-        # fused: B,J,T,D -> forecast from last token
-        last = fused[:, :, -1:, :].expand(-1, -1, self.pred_len, -1)
-        pred = head(last)  # B,J,P,3
-        pred = pred.permute(0, 2, 1, 3).contiguous().view(fused.shape[0], self.pred_len, joints * 3)
+        # fused: B,J,T,D -> DCT-domain forecast coefficients
+        last = fused[:, :, -1:, :].expand(-1, -1, self.seq_len, -1)
+        pred = head(last)  # B,J,T,3
+        pred = pred.permute(0, 2, 1, 3).contiguous().view(fused.shape[0], self.seq_len, joints * 3)
         return pred
 
     def _decode_recon(self, fused: torch.Tensor, head: nn.Linear, joints: int) -> torch.Tensor:
