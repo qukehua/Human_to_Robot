@@ -140,7 +140,9 @@ class AINet(nn.Module):
         self.robot_joint = self.config.motion.dim2 // 3
         self.seq_len = self.config.motion.harper_input_length_dct
         self.pred_len = getattr(self.config.motion, "harper_target_length_train", 10)
-        self.embed_dim = getattr(self.config.motion_mlp, "embed_dim", 64)
+        self.embed_dim = getattr(
+            self.config.motion_mlp, "embed_dim", getattr(self.config.motion_mlp, "hidden_dim", 64)
+        )
         self.dropout = getattr(self.config.motion_mlp, "dropout", 0.1)
         self.intra_layers = getattr(self.config.motion_mlp, "intra_layers", 12)
         self.inter_layers = getattr(self.config.motion_mlp, "inter_layers", 9)

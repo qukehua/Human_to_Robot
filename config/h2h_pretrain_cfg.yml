@@ -8,7 +8,8 @@ model:
   freeze_cross_attn: false
   use_ifb: false
   motion_mlp:
-    embed_dim: 64
+    hidden_dim: 512
+    embed_dim: 512
     dropout: 0.1
     intra_layers: 12
     inter_layers: 9

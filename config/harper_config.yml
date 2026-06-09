@@ -25,7 +25,8 @@ pre_dct: false
 post_dct: false
 
 motion_mlp:
-  hidden_dim: 63
+  hidden_dim: 512
+  embed_dim: 512
   seq_len: 60
   intra_layers: 12
   inter_layers: 9
